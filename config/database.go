@@ -9,14 +9,17 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
+const (
 	host     = "localhost"
 	user     = "postgres"
 	password = "8525"
 	dbPort   = "5432"
 	dbName   = "myGorm"
-	db       *gorm.DB
-	err      error
+)
+
+var (
+	db  *gorm.DB
+	err error
 )
 
 func StartDB() *gorm.DB {
