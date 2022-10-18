@@ -3,6 +3,7 @@ package controllers
 import (
 	"MyGram/models"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -40,7 +41,65 @@ func (c *Controllers) CreateUsers(ctx *gin.Context) {
 	}
 
 	if err := c.masterDB.Debug().Create(&Users).Error; err != nil {
-		if strings.Contains(err.Error(), "duplicate key value violates unique constraint \"users_email_key\"") {
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint \"idx_users_email\"") {
+			ctx.JSON(http.StatusConflict, gin.H{
+				"error":  "Conflict",
+				"status": "Email already exists",
+			})
+
+			return
+		}
+
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint \"idx_users_username\"") {
+			ctx.JSON(http.StatusConflict, gin.H{
+				"error":  "Conflict",
+				"status": "Username already exists",
+			})
+
+			return
+		}
+
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":  "Bad Request",
+			"status": err.Error(),
+		})
+
+		return
+	}
+
+	result = gin.H{
+		"age":      Users.Age,
+		"email":    Users.Email,
+		"id":       Users.ID,
+		"username": Users.Username,
+	}
+	ctx.JSON(http.StatusCreated, result)
+}
+
+func (c *Controllers) UpdateUser(ctx *gin.Context) {
+
+	var (
+		Users  models.Users
+		result gin.H
+	)
+
+	userId, err := strconv.Atoi(ctx.Param("userId"))
+
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error":  "error",
+			"status": "User ID not found, Please try again",
+		})
+		return
+	}
+
+	if err := ctx.ShouldBindJSON(&Users); err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	if err = c.masterDB.Debug().Model(&Users).Where("id = ?", userId).Updates(models.Users{Username: Users.Username, Email: Users.Email}).First(&Users).Error; err != nil {
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint \"idx_users_email\"") {
 			ctx.JSON(http.StatusConflict, gin.H{
 				"error":   "Conflict",
 				"message": "Email already exists",
@@ -49,7 +108,7 @@ func (c *Controllers) CreateUsers(ctx *gin.Context) {
 			return
 		}
 
-		if strings.Contains(err.Error(), "duplicate key value violates unique constraint \"users_username_key\"") {
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint \"idx_users_username\"") {
 			ctx.JSON(http.StatusConflict, gin.H{
 				"error":   "Conflict",
 				"message": "Username already exists",
@@ -67,10 +126,11 @@ func (c *Controllers) CreateUsers(ctx *gin.Context) {
 	}
 
 	result = gin.H{
-		"age":      Users.Age,
-		"email":    Users.Email,
-		"id":       Users.ID,
-		"username": Users.Username,
+		"id":         Users.ID,
+		"email":      Users.Email,
+		"username":   Users.Username,
+		"age":        Users.Age,
+		"updated_at": Users.UpdatedAt,
 	}
-	ctx.JSON(http.StatusCreated, result)
+	ctx.JSON(http.StatusOK, result)
 }

@@ -14,13 +14,14 @@ type Users struct {
 }
 
 func (u *Users) BeforeCreate(tx *gorm.DB) (err error) {
-	_, errCreate := govalidator.ValidateStruct(u)
-
-	if errCreate != nil {
-		err = errCreate
+	if _, err = govalidator.ValidateStruct(u); err != nil {
 		return
 	}
-
-	err = nil
+	return
+}
+func (u *Users) BeforeUpdate(tx *gorm.DB) (err error) {
+	if _, err = govalidator.ValidateStruct(u); err != nil {
+		return
+	}
 	return
 }
