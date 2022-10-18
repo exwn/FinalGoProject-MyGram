@@ -1,6 +1,7 @@
 package config
 
 import (
+	"MyGram/models"
 	"fmt"
 	"log"
 
@@ -25,6 +26,6 @@ func StartDB() *gorm.DB {
 	if err != nil {
 		log.Fatal("Error connecting to database : ", err)
 	}
-	db.Debug().AutoMigrate()
+	db.Debug().AutoMigrate(models.Users{})
 	return db
 }
