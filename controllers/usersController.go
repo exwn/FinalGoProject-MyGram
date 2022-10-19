@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"MyGram/helpers"
 	"MyGram/models"
 	"net/http"
 	"strings"
@@ -29,15 +30,27 @@ func (c *Controllers) GetUsers(ctx *gin.Context) {
 }
 
 func (c *Controllers) CreateUsers(ctx *gin.Context) {
+	contentType := helpers.GetContentType(ctx)
+	_, _ = c.masterDB, contentType
 	var (
 		Users  models.Users
 		result gin.H
 	)
 
-	if err := ctx.ShouldBindJSON(&Users); err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
-		return
+	if contentType == "application/json" {
+		if err := ctx.ShouldBindJSON(&Users); err != nil {
+			ctx.AbortWithError(http.StatusBadRequest, err)
+		}
+	} else {
+		if err := ctx.ShouldBind(&Users); err != nil {
+			ctx.AbortWithError(http.StatusBadRequest, err)
+		}
 	}
+
+	// if err := ctx.ShouldBindJSON(&Users); err != nil {
+	// 	ctx.AbortWithError(http.StatusBadRequest, err)
+	// 	return
+	// }
 
 	if err := c.masterDB.Debug().Create(&Users).Error; err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint \"idx_users_email\"") {
@@ -143,6 +156,46 @@ func (c *Controllers) DeleteUser(ctx *gin.Context) {
 
 	result = gin.H{
 		"message": "Your account has been successfully deleted",
+	}
+	ctx.JSON(http.StatusOK, result)
+
+}
+
+func (c *Controllers) LoginUser(ctx *gin.Context) {
+	contentType := helpers.GetContentType(ctx)
+	// _, _ = c.masterDB, conntentType
+
+	var (
+		Users  models.Users
+		result gin.H
+	)
+	// password := ""
+	if contentType == "application/json" {
+		if err := ctx.ShouldBindJSON(&Users); err != nil {
+			ctx.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+	} else {
+		if err := ctx.ShouldBind(&Users); err != nil {
+			ctx.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+	}
+	originalPassword := Users.Password
+	if err := c.masterDB.Debug().Where("email=?", Users.Email).Take(&Users).Error; err != nil {
+		panic("Failed to find user data")
+	}
+
+	if isValid := helpers.ComparePass(Users.Password, originalPassword); !isValid {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "Unauthorized",
+			"message": "Invalid email/password",
+		})
+	}
+
+	jwt := helpers.GenerateToken(Users.ID, Users.Email)
+	result = gin.H{
+		"token": jwt,
 	}
 	ctx.JSON(http.StatusOK, result)
 

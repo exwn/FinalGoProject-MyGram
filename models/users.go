@@ -1,6 +1,8 @@
 package models
 
 import (
+	"MyGram/helpers"
+
 	"github.com/asaskevich/govalidator"
 	"gorm.io/gorm"
 )
@@ -17,6 +19,7 @@ func (u *Users) BeforeCreate(tx *gorm.DB) (err error) {
 	if _, err = govalidator.ValidateStruct(u); err != nil {
 		return
 	}
+	u.Password = helpers.HashPass(u.Password)
 	return
 }
 func (u *Users) BeforeUpdate(tx *gorm.DB) (err error) {
