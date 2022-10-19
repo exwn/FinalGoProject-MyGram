@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 func (c *Controllers) GetUsers(ctx *gin.Context) {
@@ -138,13 +139,24 @@ func (c *Controllers) UpdateUser(ctx *gin.Context) {
 }
 
 func (c *Controllers) DeleteUser(ctx *gin.Context) {
+	userData := ctx.MustGet("userData").(jwt.MapClaims)
+	contentType := helpers.GetContentType(ctx)
 
 	var (
 		Users  models.Users
 		result gin.H
 	)
+	userID := uint(userData["id"].(float64))
 
-	if err := c.masterDB.Debug().Model(&Users).Where("id = ?", ctx.Param("userId")).First(&Users).Error; err != nil {
+	if contentType == "application/json" {
+		ctx.ShouldBindJSON(&Users)
+	} else {
+		ctx.ShouldBind(&Users)
+	}
+
+	Users.ID = userID
+
+	if err := c.masterDB.Debug().Model(&Users).Where("id = ?", userID).First(&Users).Error; err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Bad Request",
 			"message": err.Error(),
