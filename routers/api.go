@@ -17,6 +17,7 @@ func StartServer() {
 	router.GET("/users", controller.GetUsers)
 	router.POST("/users/register", controller.CreateUsers)
 	router.PUT("/users/:userId", controller.UpdateUser)
+	router.DELETE("/users/:userId", controller.DeleteUser)
 
 	router.Run()
 }

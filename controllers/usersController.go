@@ -3,7 +3,6 @@ package controllers
 import (
 	"MyGram/models"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -83,22 +82,12 @@ func (c *Controllers) UpdateUser(ctx *gin.Context) {
 		result gin.H
 	)
 
-	userId, err := strconv.Atoi(ctx.Param("userId"))
-
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"error":  "error",
-			"status": "User ID not found, Please try again",
-		})
-		return
-	}
-
 	if err := ctx.ShouldBindJSON(&Users); err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	if err = c.masterDB.Debug().Model(&Users).Where("id = ?", userId).Updates(models.Users{Username: Users.Username, Email: Users.Email}).First(&Users).Error; err != nil {
+	if err := c.masterDB.Debug().Model(&Users).Where("id = ?", ctx.Param("userId")).Updates(models.Users{Username: Users.Username, Email: Users.Email}).First(&Users).Error; err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint \"idx_users_email\"") {
 			ctx.JSON(http.StatusConflict, gin.H{
 				"error":   "Conflict",
@@ -133,4 +122,28 @@ func (c *Controllers) UpdateUser(ctx *gin.Context) {
 		"updated_at": Users.UpdatedAt,
 	}
 	ctx.JSON(http.StatusOK, result)
+}
+
+func (c *Controllers) DeleteUser(ctx *gin.Context) {
+
+	var (
+		Users  models.Users
+		result gin.H
+	)
+
+	if err := c.masterDB.Debug().Model(&Users).Where("id = ?", ctx.Param("userId")).First(&Users).Error; err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Bad Request",
+			"message": err.Error(),
+		})
+
+		return
+	}
+	c.masterDB.Delete(&Users)
+
+	result = gin.H{
+		"message": "Your account has been successfully deleted",
+	}
+	ctx.JSON(http.StatusOK, result)
+
 }
